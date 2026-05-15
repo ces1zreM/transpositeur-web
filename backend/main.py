@@ -10,7 +10,7 @@ from music21 import converter, interval, clef as music21_clef
 
 app = FastAPI()
 
-# Configuration CORS pour Render et local
+# Configuration CORS
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -22,18 +22,18 @@ app.add_middleware(
 # --- CONFIGURATION DES CHEMINS ---
 current_dir = os.path.dirname(os.path.abspath(__file__))
 
-# Dossiers temporaires (Chemins relatifs pour s'adapter partout)
 UPLOAD_DIR = os.path.join(current_dir, "temp_music")
 OUTPUT_DIR = os.path.join(current_dir, "output_music")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
-# Détection automatique de l'environnement (Linux/Render vs Windows/Local)
+# Détection de l'environnement
 if os.name == 'nt':  # Windows
     AUDIVERIS_BIN = r"C:\Program Files\Audiveris\Audiveris.exe"
     IS_LINUX = False
-else:  # Linux (Render)
-    AUDIVERIS_BIN = "/app/Audiveris.jar"
+else:  # Linux (Render avec installation complète)
+    # Chemin vers le script de lancement installé par le Dockerfile
+    AUDIVERIS_BIN = "/app/AudiverisApp/bin/Audiveris" 
     IS_LINUX = True
 
 # --- DISPOSITIF 1 : Transposition ---
@@ -46,9 +46,6 @@ async def transpose_file(
     file_path = os.path.join(UPLOAD_DIR, file.filename)
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-
-    print(f"📥 Fichier reçu pour traitement : {file_path}")
-    print(f"⚙️ Paramètres -> Transposition: {semitones} demi-tons | Clé forcée: {clef}")
 
     try:
         score = converter.parse(file_path)
@@ -81,7 +78,6 @@ async def transpose_file(
 
         return Response(content=xml_content, media_type="application/xml")
     except Exception as e:
-        print(f"❌ Erreur lors de la transformation : {e}")
         return JSONResponse(status_code=500, content={"error": str(e)})
 
 # --- DISPOSITIF 2 : Conversion PDF (Audiveris) ---
@@ -94,26 +90,31 @@ async def convert_pdf_to_mxl(file: UploadFile = File(...)):
     with open(pdf_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
-    print(f"📸 Vrai Scan PDF reçu pour numérisation Audiveris OMR : {pdf_path}")
-
     try:
         output_name = file.filename.rsplit('.', 1)[0]
         
-        # Commande adaptée selon l'OS (Windows .exe ou Linux .jar)
+        # Commande adaptée
         if IS_LINUX:
-            command = ["java", "-Djava.awt.headless=true", "-jar", AUDIVERIS_BIN, "-batch", "-transcribe", "-export", "-output", OUTPUT_DIR, pdf_path]
+            # Sur Linux, on utilise le script de lancement avec l'option headless
+            command = [AUDIVERIS_BIN, "-batch", "-transcribe", "-export", "-output", OUTPUT_DIR, pdf_path]
+            # Note: Le script 'Audiveris' sous Linux gère souvent déjà les arguments Java. 
+            # Si besoin, on peut ajouter env={"JAVA_OPTS": "-Djava.awt.headless=true"} dans subprocess.run
         else:
             command = [AUDIVERIS_BIN, "-batch", "-transcribe", "-export", "-output", OUTPUT_DIR, pdf_path]
 
-        print("🤖 Audiveris calcule la partition en arrière-plan...")
-        result = subprocess.run(command, capture_output=True, text=True)
+        print(f"🤖 Lancement Audiveris sur : {pdf_path}")
+        # On ajoute headless via les variables d'environnement pour Linux
+        env = os.environ.copy()
+        if IS_LINUX:
+            env["JAVA_OPTS"] = "-Djava.awt.headless=true"
 
-        # RECHERCHE INTELLIGENTE (Ta logique idéale)
+        result = subprocess.run(command, capture_output=True, text=True, env=env)
+
+        # Recherche du fichier généré
         fichiers_trouves = glob.glob(os.path.join(OUTPUT_DIR, f"{output_name}*.*"))
         fichier_cible = next((f for f in fichiers_trouves if f.lower().endswith(('.mxl', '.musicxml'))), None)
 
         if fichier_cible and os.path.exists(fichier_cible):
-            print(f"✅ Partition détectée et récupérée : {fichier_cible}")
             score = converter.parse(fichier_cible)
             xml_data = score.write('musicxml')
 
@@ -124,20 +125,18 @@ async def convert_pdf_to_mxl(file: UploadFile = File(...)):
             except: pass
             return Response(content=xml_content, media_type="application/xml")
         else:
-            print(f"❌ Aucun fichier musical trouvé. Logs :\n{result.stderr}")
-            return JSONResponse(status_code=500, content={"error": "Échec de l'analyse Audiveris (Fichier introuvable)."})
+            print(f"❌ Erreur Audiveris. Logs :\n{result.stderr}")
+            return JSONResponse(status_code=500, content={"error": "Échec de l'analyse Audiveris (Fichier non généré)."})
 
     except Exception as e:
-        print(f"❌ Erreur critique du serveur OMR : {e}")
         return JSONResponse(status_code=500, content={"error": f"Erreur interne : {str(e)}"})
 
-# --- SERVIR LE FRONTEND (Pour Render) ---
+# --- SERVIR LE FRONTEND ---
 build_path = os.path.join(current_dir, "build")
 if os.path.exists(build_path):
     app.mount("/", StaticFiles(directory=build_path, html=True), name="static")
 
 if __name__ == "__main__":
     import uvicorn
-    # Port dynamique pour Render, 8000 pour local
-    port = int(os.environ.get("PORT", 8000))
+    port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
