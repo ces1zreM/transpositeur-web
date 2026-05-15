@@ -31,7 +31,6 @@ os.makedirs(OUTPUT_DIR, exist_ok=True)
 # Le JAR d'Audiveris sera à la racine /app/ selon notre Dockerfile
 AUDIVERIS_JAR = "/app/Audiveris.jar"
 
-
 # --- DISPOSITIF 1 : TRANSPOSITION ---
 @app.post("/transpose")
 async def transpose_file(
@@ -52,17 +51,12 @@ async def transpose_file(
             for part in score.getElementsByClass('Part'):
                 for measure in part.getElementsByClass('Measure'):
                     existing_clefs = measure.getElementsByClass(music21_clef.Clef)
-
-                    if clef == "Treble":
-                        new_clef = music21_clef.TrebleClef()
-                    elif clef == "Bass":
-                        new_clef = music21_clef.BassClef()
-                    elif clef == "Soprano":
-                        new_clef = music21_clef.SopranoClef()
-                    elif clef == "Alto":
-                        new_clef = music21_clef.AltoClef()
-                    elif clef == "Tenor":
-                        new_clef = music21_clef.TenorClef()
+                    
+                    if clef == "Treble": new_clef = music21_clef.TrebleClef()
+                    elif clef == "Bass": new_clef = music21_clef.BassClef()
+                    elif clef == "Soprano": new_clef = music21_clef.SopranoClef()
+                    elif clef == "Alto": new_clef = music21_clef.AltoClef()
+                    elif clef == "Tenor": new_clef = music21_clef.TenorClef()
 
                     if existing_clefs:
                         measure.replace(existing_clefs[0], new_clef)
@@ -76,7 +70,6 @@ async def transpose_file(
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-
 # --- DISPOSITIF 2 : CONVERSION PDF (AUDIVERIS) ---
 @app.post("/convert-pdf")
 async def convert_pdf_to_mxl(file: UploadFile = File(...)):
@@ -89,11 +82,11 @@ async def convert_pdf_to_mxl(file: UploadFile = File(...)):
 
     try:
         output_name = file.filename.rsplit('.', 1)[0]
-
+        
         # Commande Linux/Railway pour lancer le JAR Java
         command = [
-            "java", "-Djava.awt.headless=true",
-            "-jar", AUDIVERIS_JAR,
+            "java", "-Djava.awt.headless=true", 
+            "-jar", AUDIVERIS_JAR, 
             "-batch", "-transcribe", "-export", "-output", OUTPUT_DIR, pdf_path
         ]
 
@@ -113,7 +106,6 @@ async def convert_pdf_to_mxl(file: UploadFile = File(...)):
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
-
 # --- SERVIR LE FRONTEND (REACT BUILD) ---
 build_path = os.path.join(current_dir, "build")
 if os.path.exists(build_path):
@@ -122,7 +114,6 @@ if os.path.exists(build_path):
 # --- LANCEMENT SERVEUR (PORT DYNAMIQUE) ---
 if __name__ == "__main__":
     import uvicorn
-
     # Railway injecte la variable PORT, sinon on utilise 8080 par défaut
     port = int(os.environ.get("PORT", 8080))
     uvicorn.run(app, host="0.0.0.0", port=port)
