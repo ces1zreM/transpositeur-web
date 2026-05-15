@@ -1,4 +1,0 @@
-fastapi
-uvicorn
-music21
-python-multipart
