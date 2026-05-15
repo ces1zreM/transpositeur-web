@@ -1,6 +1,6 @@
 FROM eclipse-temurin:17-jdk-focal
 
-# 1. Installation des dépendances système indispensables
+# 1. Installation des outils Linux nécessaires
 RUN apt-get update && apt-get install -y \
     python3 python3-pip \
     tesseract-ocr \
@@ -12,16 +12,15 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# 2. TÉLÉCHARGEMENT DE TON ZIP DEPUIS DROPBOX
-# met bien ton lien avec "dl=1" à la fin entre les guillemets !
-RUN curl -L -o audiveris.zip "https://www.dropbox.com/scl/fi/upb0n3svz386f5tlohi5o/Audiveris.zip?rlkey=3l2sro0c122os3x07pawc822c&st=5qczg85x&dl=1"
+# 2. TÉLÉCHARGEMENT DEPUIS DROPBOX (Colle ton lien ici)
+RUN curl -L -o audiveris.zip "https://www.dropbox.com/scl/fi/upb0n3svz386f5tlohi5o/Audiveris.zip?rlkey=3l2sro0c122os3x07pawc822c&st=593l7qze&dl=1"
 
-# 3. Création du dossier et décompression
+# 3. Création du dossier et décompression automatique
 RUN mkdir -p /app/backend/audiveris_local && \
     unzip audiveris.zip -d /app/backend/audiveris_local && \
     rm audiveris.zip
 
-# 4. Copie du reste de ton code GitHub (ton main.py et ton build)
+# 4. Copie de ton code GitHub (main.py, build)
 COPY . /app/
 
 # 5. Installation des librairies Python
