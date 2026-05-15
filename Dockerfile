@@ -1,7 +1,7 @@
-# 1. Base Java pour Audiveris
-FROM openjdk:17-jdk-slim
+# Utilisation d'une image Debian stable avec Java 17 déjà inclus
+FROM eclipse-temurin:17-jdk-focal
 
-# 2. Installation de Python, Pip et Tesseract (pour l'OCR d'Audiveris)
+# 2. Installation de Python, Pip et Tesseract
 RUN apt-get update && apt-get install -y \
     python3 python3-pip tesseract-ocr \
     && rm -rf /var/lib/apt/lists/*
