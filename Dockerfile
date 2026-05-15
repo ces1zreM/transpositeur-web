@@ -6,13 +6,13 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# On copie tout le projet
+# On copie tout le contenu de ton GitHub dans le dossier /app du serveur
 COPY . /app/
 
-# On installe les bibliothèques
-RUN pip3 install --no-cache-dir -r backend/requirements.txt
+# CORRECTION ICI : Le fichier est à la racine, donc on enlève "backend/"
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-# On s'assure que le JAR est au bon endroit pour le main.py
+# On s'assure que le JAR est au bon endroit
 RUN cp backend/audiveris.jar /app/Audiveris.jar
 
 EXPOSE 8080
