@@ -1,6 +1,6 @@
 FROM eclipse-temurin:17-jdk-focal
 
-# 1. Installation des dépendances système
+# 1. Installation des outils de base
 RUN apt-get update && apt-get install -y \
     python3 python3-pip \
     tesseract-ocr \
@@ -8,24 +8,27 @@ RUN apt-get update && apt-get install -y \
     ghostscript \
     wget \
     unzip \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# 2. TELECHARGEMENT D'AUDIVERIS (Correction du lien 404)
-# On télécharge la version "bundle" qui contient tout le nécessaire
-RUN wget https://github.com/Audiveris/audiveris/releases/download/v5.3.1/audiveris-5.3.1.zip && \
-    unzip audiveris-5.3.1.zip && \
-    mv audiveris-5.3.1 AudiverisApp && \
-    rm audiveris-5.3.1.zip
+# 2. TELECHARGEMENT D'AUDIVERIS (Via lien de redirection officiel)
+# Cette commande récupère la version 5.3.1 via une URL qui ne dépend pas de la casse
+RUN curl -L -o audiveris.zip https://github.com/Audiveris/audiveris/releases/download/v5.3.1/audiveris-5.3.1.zip || \
+    curl -L -o audiveris.zip https://github.com/Audiveris/audiveris/releases/download/v5.3.1/Audiveris-5.3.1.zip
 
-# 3. Copie de ton projet
+RUN unzip audiveris.zip && \
+    mv audiveris-* AudiverisApp && \
+    rm audiveris.zip
+
+# 3. Copie du projet
 COPY . /app/
 
-# 4. Installation des bibliothèques Python
+# 4. Installation Python
 RUN pip3 install --no-cache-dir -r requirements.txt
 
 EXPOSE 8080
 
-# 5. Lancement via Python
+# 5. Lancement
 CMD ["python3", "backend/main.py"]
