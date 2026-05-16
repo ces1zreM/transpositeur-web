@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y \
 
 WORKDIR /app
 
-# 2. TÉLÉCHARGEMENT DEPUIS DROPBOX (Colle ton lien ici)
+# 2. TÉLÉCHARGEMENT DEPUIS DROPBOX
 RUN curl -L -o audiveris.zip "https://www.dropbox.com/scl/fi/upb0n3svz386f5tlohi5o/Audiveris.zip?rlkey=3l2sro0c122os3x07pawc822c&st=593l7qze&dl=1"
 
 # 3. Création du dossier et décompression automatique
