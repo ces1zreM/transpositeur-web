@@ -17,24 +17,26 @@ async def process_pdf(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
         
     try:
-        # Copie dans le répertoire d'Audiveris
         local_pdf = os.path.join(AUDIVERIS_ROOT_DIR, file.filename)
         shutil.copy2(pdf_path, local_pdf)
         
-        # Récupération automatique du classpath
+        # RECHERCHE RÉCURSIVE DE TOUS LES FICHIERS JAR (Y COMPRIS DANS /app/ ET SOUS-DOSSIERS)
         classpath_elements = []
         for root, dirs, files in os.walk(AUDIVERIS_ROOT_DIR):
             for f in files:
                 if f.endswith('.jar'):
                     classpath_elements.append(os.path.join(root, f))
+        
+        if not classpath_elements:
+            return JSONResponse(status_code=500, content={"error": "Aucun fichier .jar trouvé dans le dossier Audiveris."})
+            
         classpath = ":".join(classpath_elements)
         
-        # Commande d'exécution pure, sans interférence
+        # Commande d'exécution sous Linux avec environnement virtuel d'affichage graphique (Xvfb)
         command = f'xvfb-run --auto-servernum java -cp "{classpath}" org.audiveris.Main -batch -transcribe -export=musicxml -output . "{file.filename}"'
         
         result = subprocess.run(command, shell=True, capture_output=True, text=True, cwd=AUDIVERIS_ROOT_DIR)
         
-        # Recherche du fichier MusicXML / MXL généré
         base_name = os.path.splitext(file.filename)[0]
         for root, dirs, files in os.walk(AUDIVERIS_ROOT_DIR):
             for f in files:
